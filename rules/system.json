@@ -584,6 +584,10 @@
   {"name": "com.seeyon.cap4.form.util.SinoDetect","rules": [
     {"function": "initializeFrequencies","type": "ignore","vul": "","actions": {},"polluted": [],"max": -2}
   ]},
+
+  {"name": "com.seeyon.ctp.form.util.SinoDetect","rules": [
+    {"function": "initializeFrequencies","type": "ignore","vul": "","actions": {},"polluted": [],"max": -2}
+  ]},
   
   {"name": "com.ibm.db2.jcc.am.gb","rules": [
     {"function": "f","type": "ignore","vul": "","actions": {},"polluted": [],"max": -2}
