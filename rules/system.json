@@ -462,6 +462,14 @@
     {"function": "getFileMap","type": "know","vul": "","actions": {"return<s>": ["source"]},"polluted": [],"max": -2},
     {"function": "getMultiFileMap","type": "know","vul": "","actions": {"return<s>": ["source"]},"polluted": [],"max": -2}
   ]},
+
+  {"name": "org.springframework.web.multipart.MultipartFile","rules": [
+    {"function": "getBytes","type": "know","vul": "","actions": {"return<s>": ["this"]},"polluted": [],"max": -2},
+    {"function": "getInputStream","type": "know","vul": "","actions": {"return<s>": ["this"]},"polluted": [],"max": -2},
+    {"function": "getOriginalFilename","type": "know","vul": "","actions": {"return<s>": ["this"]},"polluted": [],"max": -2},
+    {"function": "getContentType","type": "know","vul": "","actions": {"return<s>": ["this"]},"polluted": [],"max": -2},
+    {"function": "getName","type": "know","vul": "","actions": {"return<s>": ["this"]},"polluted": [],"max": -2}
+  ]},
   
   {"name": "java.io.FileSystem","rules": [
     {"function": "normalize","type": "know","vul": "","actions": {"return": ["param-0"]},"polluted": [],"max": -2},
