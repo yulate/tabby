@@ -534,7 +534,7 @@ public class DataContainer {
 
         // 获取父类
         if (cls.getSuperclass().isPresent()) {
-            String superClassName = cls.getSuperclass().get().getClassName();
+            String superClassName = cls.getSuperclass().get().toString();
             JavaClassType superClassType = (JavaClassType) SootUpUtils.createClassType(superClassName);
             JavaSootClass superClass = SootUpViewManager.getInstance().getClass(superClassType);
             if (superClass != null) {

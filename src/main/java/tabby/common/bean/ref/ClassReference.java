@@ -138,14 +138,14 @@ public class ClassReference {
         if (cls.getSuperclass().isPresent()) {
             // 剔除Object类的继承关系，节省继承边数量
             classRef.setHasSuperClass(true);
-            classRef.setSuperClass(cls.getSuperclass().get().getClassName());
+            classRef.setSuperClass(cls.getSuperclass().get().toString());
         }
 
         // 提取接口信息
         if (!cls.getInterfaces().isEmpty()) {
             classRef.setHasInterfaces(true);
             cls.getInterfaces().forEach(interfaceName -> {
-                classRef.getInterfaces().add(interfaceName.getClassName());
+                classRef.getInterfaces().add(interfaceName.toString());
             });
         }
 

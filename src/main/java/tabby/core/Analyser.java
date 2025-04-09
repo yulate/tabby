@@ -191,6 +191,11 @@ public class Analyser {
 
         // 使用sootup 进行类信息抽取
         classInfoScanner.runSP(realTargets);
+
+        rulesContainer.saveStatus();
+
+        long time = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start);
+        log.info("Total cost {} min {} seconds.", time / 60, time % 60);
     }
 
     public List<String> getTargets(Map<String, String> targets, List<String> classpaths) {

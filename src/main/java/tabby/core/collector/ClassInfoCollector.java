@@ -189,9 +189,38 @@ public class ClassInfoCollector {
         return null;
     }
 
+    public static ClassReference collectAndSaveSP(Object clazz, boolean newAdded,
+                                                  DataContainer dataContainer, RulesContainer rulesContainer) {
+        JavaSootClass cls = null;
+        if (clazz instanceof JavaSootClass) {
+            cls = (JavaSootClass) clazz;
+        } else if (clazz instanceof String className) {
+            // 从字符串获取JavaSootClass
+            ClassType classType = SootUpUtils.createClassType(className);
+            cls = SootUpViewManager.getInstance().getClass(classType);
+        }
+
+        if (cls != null) {
+            if (rulesContainer == null) {
+                rulesContainer = GlobalConfiguration.rulesContainer;
+            }
+            // 使用SootUp版本的newInstance创建ClassReference
+            ClassReference classRef = ClassReference.newInstanceSP(cls);
+
+            // 使用SootUp版本的collectMethodsInfo收集方法信息
+            collectMethodsInfoSP(classRef, cls, dataContainer, rulesContainer, newAdded);
+
+            // 保存到dataContainer
+            dataContainer.store(classRef, false);
+            return classRef;
+        }
+        return null;
+    }
+
     public static void collectRuntimeForSingleClazz(Object clazz, boolean newAdded,
                                                     DataContainer dataContainer, RulesContainer rulesContainer) {
-        ClassReference classReference = collectAndSave(clazz, newAdded, dataContainer, rulesContainer);
+//        ClassReference classReference = collectAndSave(clazz, newAdded, dataContainer, rulesContainer);
+        ClassReference classReference = collectAndSaveSP(clazz, newAdded, dataContainer, rulesContainer);
         collectRelationInfo(classReference, true, newAdded, dataContainer, rulesContainer);
     }
 
@@ -203,7 +232,8 @@ public class ClassInfoCollector {
             ClassReference superClsRef = dataContainer.getClassRefByName(classRef.getSuperClass(), isNeedFetchFromDatabase);
 
             if (superClsRef == null) {
-                superClsRef = collectAndSave(classRef.getSuperClass(), newAdded, dataContainer, rulesContainer);
+//                superClsRef = collectAndSave(classRef.getSuperClass(), newAdded, dataContainer, rulesContainer);
+                superClsRef = collectAndSaveSP(classRef.getSuperClass(), newAdded, dataContainer, rulesContainer);
             }
 
             if (superClsRef != null) {
@@ -219,7 +249,8 @@ public class ClassInfoCollector {
             for (String inface : infaces) {
                 ClassReference infaceClsRef = dataContainer.getClassRefByName(inface, isNeedFetchFromDatabase);
                 if (infaceClsRef == null) {// 正常情况不会进入这个阶段
-                    infaceClsRef = collectAndSave(inface, false, dataContainer, rulesContainer);
+//                    infaceClsRef = collectAndSave(inface, false, dataContainer, rulesContainer);
+                    infaceClsRef = collectAndSaveSP(inface, false, dataContainer, rulesContainer);
                 }
                 if (infaceClsRef != null) {
                     Interfaces interfaces = Interfaces.newInstance(classRef, infaceClsRef);
