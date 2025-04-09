@@ -89,13 +89,13 @@ public class Analyser {
         }
 
 //        runSootAnalysis(targets, new ArrayList<>(cps.values()));
+        runSootUpAnalysis(targets, new ArrayList<>(cps.values()));
 //        if (!GlobalConfiguration.GLOBAL_FORCE_STOP) {
 //            // 仅当OOM未发生时，保存当前结果到CSV文件
 //            dataContainer.count();
 //            // output
 //            dataContainer.save2CSV();
 //        }
-        runSootUpAnalysis(targets,new ArrayList<>(cps.values()));
     }
 
     @Async("tabby-saver")
@@ -191,6 +191,8 @@ public class Analyser {
 
         // 使用sootup 进行类信息抽取
         classInfoScanner.runSP(realTargets);
+        // 全局函数调用图构建
+        callGraphScanner.runSP();
 
         rulesContainer.saveStatus();
 

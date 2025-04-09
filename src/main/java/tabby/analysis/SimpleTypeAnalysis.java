@@ -13,6 +13,9 @@ import soot.jimple.Stmt;
 import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.graph.UnitGraph;
 import soot.toolkits.scalar.ForwardFlowAnalysis;
+import sootup.core.graph.StmtGraph;
+import sootup.core.jimple.basic.NoPositionInformation;
+import sootup.java.core.JavaSootMethod;
 import tabby.analysis.container.ValueContainer;
 import tabby.analysis.data.Context;
 import tabby.analysis.data.SimpleObject;
@@ -276,6 +279,81 @@ public class SimpleTypeAnalysis extends ForwardFlowAnalysis<Unit, ValueContainer
                 log.error(msg);
             } else {
                 log.error(msg);
+                e.printStackTrace();
+            }
+        } finally {
+            methodReference.setRunning(false);
+        }
+
+        return false;
+    }
+
+    /**
+     * SootUp版本的方法处理
+     *
+     * @param method  SootUp方法对象
+     * @param context 分析上下文
+     * @return 处理是否成功
+     */
+    public static boolean processMethodSP(JavaSootMethod method, Context context) {
+        String signature = "";
+        MethodReference methodReference = context.getMethodReference();
+        if (methodReference.isBodyParseError()) return false;
+
+        int maxSleepTimes = 5;
+        while (methodReference.isRunning() && maxSleepTimes > 0) {
+            // 如果已经有线程在运行了，随机睡几秒
+            int random = (int) (Math.random() * 20);
+            try {
+                Thread.sleep(random);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            // 如果睡完，已经分析完了，则直接返回
+            if (methodReference.isActionInitialed()) {
+                return true;
+            }
+            maxSleepTimes--;
+        }
+
+        try {
+            signature = methodReference.getSignature();
+
+            // 获取sootup 方法的主体
+            if (!method.hasBody()) {
+                log.debug("Method {} has no active body", signature);
+                methodReference.setInitialed(true);
+                methodReference.setActionInitialed(true);
+                return false;
+            }
+
+            // 获取sootup 的方法体
+            NoPositionInformation noPositionInformation = NoPositionInformation.getInstance();
+            sootup.core.model.Body methodBody = method.getBody();
+
+            // 检查方法体大小
+            if (methodBody != null && methodBody.getStmts().size() >= GlobalConfiguration.METHOD_MAX_BODY_COUNT) {
+                // 超级长的函数 不分析，可能会发生内存泄露的问题
+                log.debug("Method {} body is too big, ignore", signature);
+                methodReference.setInitialed(true);
+                methodReference.setActionInitialed(true);
+                return false;
+            }
+
+            if (methodBody != null) {
+                methodReference.setRunning(true);
+
+                StmtGraph<?> stmtGraph = methodBody.getStmtGraph();
+
+            }
+
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("Body retrieve error: ")) {
+                methodReference.setBodyParseError(true);
+                log.error(msg);
+            } else {
+                log.error("Error processing method {}: {}", signature, msg);
                 e.printStackTrace();
             }
         } finally {

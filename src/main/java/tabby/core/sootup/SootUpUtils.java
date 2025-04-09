@@ -7,6 +7,7 @@ import java.util.List;
 import sootup.core.inputlocation.AnalysisInputLocation;
 import sootup.core.model.SootClass;
 import sootup.core.model.SourceType;
+import sootup.core.signatures.PackageName;
 import sootup.core.types.ClassType;
 import sootup.java.bytecode.frontend.inputlocation.JavaClassPathAnalysisInputLocation;
 import sootup.java.core.JavaPackageName;
@@ -40,9 +41,29 @@ public class SootUpUtils {
      * @return ClassType实例
      */
     public static ClassType createClassType(String className) {
-        String[] split = className.split("\\.");
-        String packageName = split[split.length - 1];
-        return new JavaClassType(className, new JavaPackageName(packageName));
+        // 检查输入
+        if (className == null || className.isEmpty()) {
+            return null;
+        }
+
+        // 处理数组类型
+        if (className.endsWith("[]")) {
+            // 递归处理基础类型并创建数组类型
+            String baseType = className.substring(0, className.length() - 2);
+            return createClassType(baseType);
+        }
+
+        // 提取包名和类名
+        int lastDotIndex = className.lastIndexOf('.');
+
+        if (lastDotIndex == -1) {
+            // 没有包名的情况 (默认包)
+            return new JavaClassType(className,new PackageName(className));
+        } else {
+            String packageName = className.substring(0, lastDotIndex);
+            String simpleClassName = className.substring(lastDotIndex + 1);
+            return new JavaClassType(className, new JavaPackageName(packageName));
+        }
     }
 
     /**

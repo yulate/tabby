@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import soot.ModulePathSourceLocator;
 import soot.Scene;
 import soot.SootClass;
+import sootup.java.core.JavaSootClass;
 import sootup.java.core.views.JavaView;
 import tabby.common.bean.ref.ClassReference;
 import tabby.common.utils.SemanticUtils;
@@ -18,6 +19,7 @@ import tabby.core.sootup.SootUpViewManager;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static tabby.config.GlobalConfiguration.IS_BUILD_WIH_CACHE_ENABLE;
 import static tabby.config.GlobalConfiguration.rulesContainer;
@@ -57,7 +59,7 @@ public class ClassInfoScanner {
         List<String> runtimeClasses = new ArrayList<>(classes.keySet());
         classes.clear();
         // 单线程提取关联信息
-        buildClassEdges(runtimeClasses);
+        buildClassEdgesSP(runtimeClasses);
         save();
     }
 
@@ -67,12 +69,12 @@ public class ClassInfoScanner {
         Map<String, List<String>> moduleClasses = null;
 
         for (String path : targets) {
-            SootUpViewManager.getInstance().getView().getClasses().forEach(c -> {
-                System.out.println(c.getName());
+            List<JavaSootClass> classList = SootUpViewManager.getInstance().getView().getClasses().collect(Collectors.toList());
+            classList.parallelStream().forEach(c -> {
                 results.put(c.getName(), collector.collectSP(c));
             });
         }
-
+        log.info("Total {} classes.", results.size());
         return results;
     }
 
@@ -144,6 +146,22 @@ public class ClassInfoScanner {
             ClassReference clsRef = dataContainer.getClassRefByName(cls, IS_BUILD_WIH_CACHE_ENABLE);
             if (clsRef == null) continue;
             ClassInfoCollector.collectRelationInfo(clsRef, IS_BUILD_WIH_CACHE_ENABLE, false, dataContainer, rulesContainer);
+        }
+        log.info("Build {}/{} classes.", counter, total);
+    }
+
+    public void buildClassEdgesSP(List<String> classes) {
+        int counter = 0;
+        int total = classes.size();
+        log.info("Build {} classes' edges.", total);
+        for (String cls : classes) {
+            if (counter % 10000 == 0) {
+                log.info("Build {}/{} classes.", counter, total);
+            }
+            counter++;
+            ClassReference clsRef = dataContainer.getClassRefByName(cls, IS_BUILD_WIH_CACHE_ENABLE);
+            if (clsRef == null) continue;
+            ClassInfoCollector.collectRelationInfoSP(clsRef, IS_BUILD_WIH_CACHE_ENABLE, false, dataContainer, rulesContainer);
         }
         log.info("Build {}/{} classes.", counter, total);
     }

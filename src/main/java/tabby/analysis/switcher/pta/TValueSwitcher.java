@@ -81,7 +81,8 @@ public class TValueSwitcher extends ValueSwitcher {
         String classname = type.toQuotedString();
         ClassReference classRef = this.container.getDataContainer().getClassRefByName(classname, true);
         if (classRef == null) {
-            ClassInfoCollector.collectRuntimeForSingleClazz(classname, true, this.container.getDataContainer(), null);
+//            ClassInfoCollector.collectRuntimeForSingleClazz(classname, true, this.container.getDataContainer(), null);
+            ClassInfoCollector.collectRuntimeForSingleClazzSP(classname, true, this.container.getDataContainer(), null);
         } else { // check methods
             for (String method : classRef.getMethodSubSignatures()) {
                 // check all method is constructed

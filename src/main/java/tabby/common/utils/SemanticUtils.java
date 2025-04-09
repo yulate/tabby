@@ -811,15 +811,4 @@ public class SemanticUtils {
 
         return classes;
     }
-
-
-    public static boolean hasDefaultConstructor(JavaSootClass cls) {
-        return cls.getMethods().stream()
-                .anyMatch(m -> m.getName().equals("<init>") && m.getParameterCount() == 0);
-    }
-
-    public static boolean isSerializableClass(JavaSootClass cls) {
-        // 检查类是否实现了java.io.Serializable接口
-        return cls.getInterfaces().contains("java.io.Serializable");
-    }
 }

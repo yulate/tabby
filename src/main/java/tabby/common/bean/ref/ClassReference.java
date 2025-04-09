@@ -12,6 +12,7 @@ import tabby.common.bean.converter.List2JsonStringConverter;
 import tabby.common.bean.converter.Map2JsonStringForAnnotationsConverter;
 import tabby.common.bean.converter.Set2JsonStringConverter;
 import tabby.common.bean.edge.Has;
+import tabby.common.utils.SemanticSPUtils;
 import tabby.common.utils.SemanticUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -120,12 +121,12 @@ public class ClassReference {
         classRef.setInterface(cls.isInterface());
         classRef.setAbstract(cls.isAbstract());
 
-        classRef.setHasDefaultConstructor(SemanticUtils.hasDefaultConstructor(cls));
+        classRef.setHasDefaultConstructor(SemanticSPUtils.hasDefaultConstructor(cls));
 
         classRef.setPublic(cls.isPublic());
         // TODO 暂定默认为false
         classRef.setPhantom(false);
-        classRef.setSerializable(SemanticUtils.isSerializableClass(cls));
+        classRef.setSerializable(SemanticSPUtils.isSerializableClass(cls));
 
         // 提取字段信息
         if (!cls.getFields().isEmpty()){

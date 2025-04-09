@@ -356,7 +356,8 @@ public class DataContainer {
         MethodReference methodRef = null;
         ClassReference classRef = getClassRefByName(cls.getName(), true);
         if (classRef == null) {// 对于新建的情况，再查一遍
-            ClassInfoCollector.collectRuntimeForSingleClazz(cls.getName(), true, this, null);
+//            ClassInfoCollector.collectRuntimeForSingleClazz(cls.getName(), true, this, null);
+            ClassInfoCollector.collectRuntimeForSingleClazzSP(cls.getName(), true, this, null);
             methodRef = getMethodRefBySignature(method.getSignature(), true);
         } else if (method != null &&
                 ("soot.dummy.InvokeDynamic".equals(cls.getName())

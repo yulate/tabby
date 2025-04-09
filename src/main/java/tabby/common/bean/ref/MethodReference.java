@@ -8,13 +8,17 @@ import lombok.extern.slf4j.Slf4j;
 import soot.Body;
 import soot.SootClass;
 import soot.SootMethod;
+import sootup.java.core.JavaSootClass;
+import sootup.java.core.JavaSootMethod;
 import tabby.common.bean.converter.IntArray2JsonStringConverter;
 import tabby.common.bean.converter.Map2JsonStringConverter;
 import tabby.common.bean.converter.Map2JsonStringForAnnotationsConverter;
 import tabby.common.bean.converter.Set2JsonStringConverter;
 import tabby.common.bean.edge.Alias;
 import tabby.common.bean.edge.Call;
+import tabby.common.utils.SemanticSPUtils;
 import tabby.common.utils.SemanticUtils;
+import tabby.core.sootup.SootUpViewManager;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -118,7 +122,7 @@ public class MethodReference {
     private transient AtomicInteger timeoutTimes = new AtomicInteger(0);
 
     @Transient
-    private transient sootup.core.model.SootMethod sootUpMethod;
+    private transient JavaSootMethod sootUpMethod;
 
     public static MethodReference newInstance(String name, String signature) {
         MethodReference methodRef = new MethodReference();
@@ -198,7 +202,7 @@ public class MethodReference {
 
 
         // 存储SootUp方法对象以供后续使用
-        methodRef.setSootUpMethod(method);
+        methodRef.setSootUpMethod((JavaSootMethod) method);
 
         return methodRef;
     }
@@ -221,6 +225,13 @@ public class MethodReference {
         }
 
         return null;
+    }
+
+    public JavaSootMethod getSootMethodSP() {
+        if (sootUpMethod != null) return sootUpMethod;
+        JavaSootClass sc = SemanticSPUtils.getSootUpClass(classname);
+        sootUpMethod = SemanticSPUtils.getMethodSP(sc, subSignature);
+        return sootUpMethod;
     }
 
     public void setMethod(SootMethod method) {

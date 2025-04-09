@@ -53,6 +53,7 @@ public class ClassInfoCollector {
         // generate class reference
         ClassReference classReference = ClassReference.newInstanceSP(cls);
         // generate method reference
+        collectMethodsInfoSP(classReference, cls, dataContainer, rulesContainer, false);
         return CompletableFuture.completedFuture(classReference);
     }
 
@@ -196,8 +197,7 @@ public class ClassInfoCollector {
             cls = (JavaSootClass) clazz;
         } else if (clazz instanceof String className) {
             // 从字符串获取JavaSootClass
-            ClassType classType = SootUpUtils.createClassType(className);
-            cls = SootUpViewManager.getInstance().getClass(classType);
+            cls = SootUpViewManager.getInstance().getClass(className);
         }
 
         if (cls != null) {
@@ -219,13 +219,65 @@ public class ClassInfoCollector {
 
     public static void collectRuntimeForSingleClazz(Object clazz, boolean newAdded,
                                                     DataContainer dataContainer, RulesContainer rulesContainer) {
-//        ClassReference classReference = collectAndSave(clazz, newAdded, dataContainer, rulesContainer);
-        ClassReference classReference = collectAndSaveSP(clazz, newAdded, dataContainer, rulesContainer);
+        ClassReference classReference = collectAndSave(clazz, newAdded, dataContainer, rulesContainer);
         collectRelationInfo(classReference, true, newAdded, dataContainer, rulesContainer);
     }
 
+    public static void collectRuntimeForSingleClazzSP(Object clazz, boolean newAdded,
+                                                      DataContainer dataContainer, RulesContainer rulesContainer) {
+        ClassReference classReference = collectAndSaveSP(clazz, newAdded, dataContainer, rulesContainer);
+        collectRelationInfoSP(classReference, true, newAdded, dataContainer, rulesContainer);
+    }
+
+
     public static void collectRelationInfo(ClassReference classRef, boolean isNeedFetchFromDatabase, boolean newAdded,
                                            DataContainer dataContainer, RulesContainer rulesContainer) {
+        if (classRef == null) return;
+        // 建立继承关系
+        if (classRef.isHasSuperClass() && !"java.lang.Object".equals(classRef.getSuperClass())) {
+            ClassReference superClsRef = dataContainer.getClassRefByName(classRef.getSuperClass(), isNeedFetchFromDatabase);
+
+            if (superClsRef == null) {
+                superClsRef = collectAndSave(classRef.getSuperClass(), newAdded, dataContainer, rulesContainer);
+//                superClsRef = collectAndSaveSP(classRef.getSuperClass(), newAdded, dataContainer, rulesContainer);
+            }
+
+            if (superClsRef != null) {
+                Extend extend = Extend.newInstance(classRef, superClsRef);
+                dataContainer.store(extend, true);
+                superClsRef.getChildClassnames().add(classRef.getName());
+            }
+        }
+
+        // 建立接口关系
+        if (classRef.isHasInterfaces()) {
+            List<String> infaces = classRef.getInterfaces();
+            for (String inface : infaces) {
+                ClassReference infaceClsRef = dataContainer.getClassRefByName(inface, isNeedFetchFromDatabase);
+                if (infaceClsRef == null) {// 正常情况不会进入这个阶段
+                    infaceClsRef = collectAndSave(inface, false, dataContainer, rulesContainer);
+//                    infaceClsRef = collectAndSaveSP(inface, false, dataContainer, rulesContainer);
+                }
+                if (infaceClsRef != null) {
+                    Interfaces interfaces = Interfaces.newInstance(classRef, infaceClsRef);
+                    dataContainer.store(interfaces, true);
+                    infaceClsRef.getChildClassnames().add(classRef.getName());
+                }
+            }
+        }
+        // 建立函数别名关系
+        List<Has> hasEdges = classRef.getHasEdge();
+        if (hasEdges != null && !hasEdges.isEmpty()) {
+            for (Has has : hasEdges) {
+                generateAliasEdge(has.getMethodRef(), dataContainer);
+            }
+        }
+        // finished
+        classRef.setInitialed(true);
+    }
+
+    public static void collectRelationInfoSP(ClassReference classRef, boolean isNeedFetchFromDatabase, boolean newAdded,
+                                             DataContainer dataContainer, RulesContainer rulesContainer) {
         if (classRef == null) return;
         // 建立继承关系
         if (classRef.isHasSuperClass() && !"java.lang.Object".equals(classRef.getSuperClass())) {
@@ -263,12 +315,13 @@ public class ClassInfoCollector {
         List<Has> hasEdges = classRef.getHasEdge();
         if (hasEdges != null && !hasEdges.isEmpty()) {
             for (Has has : hasEdges) {
-                generateAliasEdge(has.getMethodRef(), dataContainer);
+                generateAliasEdgeSP(has.getMethodRef(), dataContainer);
             }
         }
         // finished
         classRef.setInitialed(true);
     }
+
 
     public static void generateHasEdge(ClassReference classRef, MethodReference methodRef,
                                        DataContainer dataContainer, boolean newAdded) {
@@ -306,6 +359,7 @@ public class ClassInfoCollector {
             }
         }
     }
+
 
     public static void generateHasEdgeSP(ClassReference classRef, MethodReference methodRef,
                                          DataContainer dataContainer, boolean newAdded) {
