@@ -117,6 +117,9 @@ public class MethodReference {
     private transient AtomicBoolean isRunning = new AtomicBoolean(false);
     private transient AtomicInteger timeoutTimes = new AtomicInteger(0);
 
+    @Transient
+    private transient sootup.core.model.SootMethod sootUpMethod;
+
     public static MethodReference newInstance(String name, String signature) {
         MethodReference methodRef = new MethodReference();
         String id = null;
@@ -162,6 +165,40 @@ public class MethodReference {
 //            }
         }
         methodRef.setAnnotations(SemanticUtils.getAnnotations(method.getTags()));
+
+        return methodRef;
+    }
+
+    // 添加到MethodReference类中
+    public static MethodReference newInstanceSP(String classname, sootup.core.model.SootMethod method) {
+        MethodReference methodRef = new MethodReference();
+        String signature = String.format("<%s: %s>", classname, method.getSubSignature());
+        String id = Hashing.md5()
+                .hashString(signature, StandardCharsets.UTF_8)
+                .toString();
+
+        methodRef.setId(id);
+        methodRef.setSignature(signature);
+        methodRef.setClassname(classname);
+        methodRef.setName(method.getName());
+        methodRef.setSubSignature(method.getSubSignature().getName());
+
+        // 设置方法修饰符
+        methodRef.setPublic(method.isPublic());
+        methodRef.setStatic(method.isStatic());
+        methodRef.setAbstract(method.isAbstract());
+
+        // 设置参数信息
+        methodRef.setReturnType(new HashSet<>(Collections.singletonList(method.getReturnType().toString())));
+        methodRef.setParameterSize(method.getParameterCount());
+
+        // 参数类型列表
+        List<String> parameterTypes = new ArrayList<>();
+        method.getParameterTypes().forEach(type -> parameterTypes.add(type.toString()));
+
+
+        // 存储SootUp方法对象以供后续使用
+        methodRef.setSootUpMethod(method);
 
         return methodRef;
     }

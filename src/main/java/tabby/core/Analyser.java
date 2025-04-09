@@ -19,6 +19,7 @@ import tabby.core.container.DataContainer;
 import tabby.core.container.RulesContainer;
 import tabby.core.scanner.CallGraphScanner;
 import tabby.core.scanner.ClassInfoScanner;
+import tabby.core.sootup.SootUpViewManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -87,13 +88,14 @@ public class Analyser {
             rulesContainer.initXmlRules(fileCollector.getXmlFiles());
         }
 
-        runSootAnalysis(targets, new ArrayList<>(cps.values()));
-        if (!GlobalConfiguration.GLOBAL_FORCE_STOP) {
-            // 仅当OOM未发生时，保存当前结果到CSV文件
-            dataContainer.count();
-            // output
-            dataContainer.save2CSV();
-        }
+//        runSootAnalysis(targets, new ArrayList<>(cps.values()));
+//        if (!GlobalConfiguration.GLOBAL_FORCE_STOP) {
+//            // 仅当OOM未发生时，保存当前结果到CSV文件
+//            dataContainer.count();
+//            // output
+//            dataContainer.save2CSV();
+//        }
+        runSootUpAnalysis(targets,new ArrayList<>(cps.values()));
     }
 
     @Async("tabby-saver")
@@ -172,6 +174,23 @@ public class Analyser {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void runSootUpAnalysis(Map<String, String> targets, List<String> classPaths) {
+
+        SootUpViewManager.getInstance().initializeView(classPaths);
+
+        // get target filepath
+        List<String> realTargets = getTargets(targets, classPaths);
+        if (realTargets.isEmpty()) {
+            log.info("Nothing to analysis!");
+            return;
+        }
+        log.info("Target {}, Dependencies {}", realTargets.size(), classPaths.size());
+        long start = System.nanoTime();
+
+        // 使用sootup 进行类信息抽取
+        classInfoScanner.runSP(realTargets);
     }
 
     public List<String> getTargets(Map<String, String> targets, List<String> classpaths) {

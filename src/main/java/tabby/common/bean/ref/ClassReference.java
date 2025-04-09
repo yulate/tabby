@@ -6,6 +6,8 @@ import lombok.Data;
 import org.springframework.data.annotation.Transient;
 import soot.SootClass;
 import soot.SootField;
+import sootup.java.core.JavaSootClass;
+import sootup.java.core.types.JavaClassType;
 import tabby.common.bean.converter.List2JsonStringConverter;
 import tabby.common.bean.converter.Map2JsonStringForAnnotationsConverter;
 import tabby.common.bean.converter.Set2JsonStringConverter;
@@ -110,6 +112,43 @@ public class ClassReference {
                 classRef.getInterfaces().add(intface.getName());
             }
         }
+        return classRef;
+    }
+
+    public static ClassReference newInstanceSP(JavaSootClass cls) {
+        ClassReference classRef = newInstance(cls.getName());
+        classRef.setInterface(cls.isInterface());
+        classRef.setAbstract(cls.isAbstract());
+
+        classRef.setHasDefaultConstructor(SemanticUtils.hasDefaultConstructor(cls));
+
+        classRef.setPublic(cls.isPublic());
+        // TODO 暂定默认为false
+        classRef.setPhantom(false);
+        classRef.setSerializable(SemanticUtils.isSerializableClass(cls));
+
+        // 提取字段信息
+        if (!cls.getFields().isEmpty()){
+            cls.getFields().forEach(f -> {
+                classRef.getFields().put(f.getName(), f.getType().toString());
+            });
+        }
+
+        // 提取父类信息
+        if (cls.getSuperclass().isPresent()) {
+            // 剔除Object类的继承关系，节省继承边数量
+            classRef.setHasSuperClass(true);
+            classRef.setSuperClass(cls.getSuperclass().get().getClassName());
+        }
+
+        // 提取接口信息
+        if (!cls.getInterfaces().isEmpty()) {
+            classRef.setHasInterfaces(true);
+            cls.getInterfaces().forEach(interfaceName -> {
+                classRef.getInterfaces().add(interfaceName.getClassName());
+            });
+        }
+
         return classRef;
     }
 

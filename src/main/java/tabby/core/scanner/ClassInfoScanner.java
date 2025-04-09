@@ -7,11 +7,13 @@ import org.springframework.stereotype.Component;
 import soot.ModulePathSourceLocator;
 import soot.Scene;
 import soot.SootClass;
+import sootup.java.core.views.JavaView;
 import tabby.common.bean.ref.ClassReference;
 import tabby.common.utils.SemanticUtils;
 import tabby.config.GlobalConfiguration;
 import tabby.core.collector.ClassInfoCollector;
 import tabby.core.container.DataContainer;
+import tabby.core.sootup.SootUpViewManager;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -46,6 +48,32 @@ public class ClassInfoScanner {
         // 单线程提取关联信息
         buildClassEdges(runtimeClasses);
         save();
+    }
+
+    public void runSP(List<String> paths) {
+        // 多线程提取基础信息
+        Map<String, CompletableFuture<ClassReference>> classes = loadAndExtractSP(paths);
+        transform(classes.values()); // 等待收集结束，并保存classRef
+        List<String> runtimeClasses = new ArrayList<>(classes.keySet());
+        classes.clear();
+        // 单线程提取关联信息
+        buildClassEdges(runtimeClasses);
+        save();
+    }
+
+    public Map<String, CompletableFuture<ClassReference>> loadAndExtractSP(List<String> targets) {
+        Map<String, CompletableFuture<ClassReference>> results = new HashMap<>();
+        log.info("Start to collect {} targets' class information.", targets.size());
+        Map<String, List<String>> moduleClasses = null;
+
+        for (String path : targets) {
+            SootUpViewManager.getInstance().getView().getClasses().forEach(c -> {
+                System.out.println(c.getName());
+                results.put(c.getName(), collector.collectSP(c));
+            });
+        }
+
+        return results;
     }
 
     public Map<String, CompletableFuture<ClassReference>> loadAndExtract(List<String> targets) {

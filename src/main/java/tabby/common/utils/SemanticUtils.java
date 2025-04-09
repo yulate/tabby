@@ -6,8 +6,11 @@ import soot.*;
 import soot.jimple.*;
 import soot.jimple.internal.JimpleLocalBox;
 import soot.tagkit.*;
+import sootup.java.core.JavaSootClass;
+import sootup.java.core.views.JavaView;
 import tabby.common.bean.ref.MethodReference;
 import tabby.config.GlobalConfiguration;
+import tabby.core.sootup.SootUpViewManager;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,6 +19,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Slf4j
 public class SemanticUtils {
@@ -797,8 +801,25 @@ public class SemanticUtils {
 
         if (classes == null) {
             classes = SourceLocator.v().getClassesUnder(filepath);
+            // TODO 使用全局sootup view 对象去获取classes
+//            JavaView view = SootUpViewManager.getInstance().getView();
+//            Stream<JavaSootClass> viewClasses = view.getClasses();
+//            viewClasses.forEach(c -> {
+//               classes.add(c.getName());
+//            });
         }
 
         return classes;
+    }
+
+
+    public static boolean hasDefaultConstructor(JavaSootClass cls) {
+        return cls.getMethods().stream()
+                .anyMatch(m -> m.getName().equals("<init>") && m.getParameterCount() == 0);
+    }
+
+    public static boolean isSerializableClass(JavaSootClass cls) {
+        // 检查类是否实现了java.io.Serializable接口
+        return cls.getInterfaces().contains("java.io.Serializable");
     }
 }

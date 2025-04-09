@@ -5,6 +5,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import soot.SootClass;
 import soot.SootMethod;
+import sootup.core.types.ClassType;
+import sootup.java.core.JavaSootClass;
+import sootup.java.core.types.JavaClassType;
 import tabby.common.bean.edge.Alias;
 import tabby.common.bean.edge.Extend;
 import tabby.common.bean.edge.Has;
@@ -15,6 +18,8 @@ import tabby.common.utils.SemanticUtils;
 import tabby.config.GlobalConfiguration;
 import tabby.core.container.DataContainer;
 import tabby.core.container.RulesContainer;
+import tabby.core.sootup.SootUpUtils;
+import tabby.core.sootup.SootUpViewManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +48,14 @@ public class ClassInfoCollector {
         return CompletableFuture.completedFuture(classRef);
     }
 
+    @Async("tabby-collector")
+    public CompletableFuture<ClassReference> collectSP(JavaSootClass cls) {
+        // generate class reference
+        ClassReference classReference = ClassReference.newInstanceSP(cls);
+        // generate method reference
+        return CompletableFuture.completedFuture(classReference);
+    }
+
     public static void collectMethodsInfo(ClassReference classRef, SootClass cls,
                                           DataContainer dataContainer, RulesContainer rulesContainer, boolean newAdded) {
         if (cls == null || cls.isPhantom()) {
@@ -58,6 +71,34 @@ public class ClassInfoCollector {
                 MethodReference methodRef = dataContainer.getMethodRefBySignature(method.getSignature(), false);
                 if (methodRef != null) continue;
                 collectSingleMethodRef(classRef, method, newAdded, false, dataContainer, rulesContainer);
+            }
+        }
+    }
+
+    public static void collectMethodsInfoSP(ClassReference classRef, JavaSootClass cls,
+                                            DataContainer dataContainer, RulesContainer rulesContainer, boolean newAdded) {
+        if (cls == null) {
+            // 在SootUp中获取SootClass的方式
+            ClassType classType = SootUpUtils.createClassType(classRef.getName());
+            cls = SootUpViewManager.getInstance().getClass(classType);
+        }
+
+        // 提取类函数信息
+        if (cls != null && !cls.getMethods().isEmpty()) {
+            // SootUp的getMethods()直接返回Collection<SootMethod>
+            for (sootup.core.model.SootMethod method : cls.getMethods()) {
+                // 在SootUp中，方法签名需要构建
+                classRef.getMethodSubSignatures().add(method.getSubSignature().getName());
+
+                // 构建完整签名
+                String signature = String.format("<%s: %s>", cls.getName(), method.getSubSignature());
+
+                // 检查数据库中是否已存在
+                MethodReference methodRef = dataContainer.getMethodRefBySignature(signature, false);
+                if (methodRef != null) continue;
+
+                // 收集单个方法
+                collectSingleMethodRefSP(classRef, method, newAdded, false, dataContainer, rulesContainer);
             }
         }
     }
@@ -86,6 +127,42 @@ public class ClassInfoCollector {
         if (genAlias) {
             generateAliasEdge(methodRef, dataContainer);
         }
+        return methodRef;
+    }
+
+    public static MethodReference collectSingleMethodRefSP(ClassReference classRef, sootup.core.model.SootMethod method,
+                                                           boolean newAdded, boolean genAlias,
+                                                           DataContainer dataContainer, RulesContainer rulesContainer) {
+        String classname = classRef.getName();
+
+        // 创建方法引用
+        MethodReference methodRef = MethodReference.newInstanceSP(classname, method);
+
+        // 应用规则
+        if (rulesContainer == null) {
+            rulesContainer = GlobalConfiguration.rulesContainer;
+        }
+        rulesContainer.apply(classRef, methodRef);
+        rulesContainer.applyTagRule(classRef, methodRef);
+
+        // 添加到新增方法集（如果需要）
+        if (GlobalConfiguration.IS_NEED_TO_DEAL_NEW_ADDED_METHOD && newAdded) {
+            dataContainer.getNewAddedMethodSigs().add(methodRef.getSignature());
+        }
+
+        // 记录特殊方法（非normal类型）
+        if (GlobalConfiguration.IS_ON_DEMAND_DRIVE && !"normal".equals(methodRef.getType())) {
+            dataContainer.getOnDemandMethods().add(methodRef.getSignature());
+        }
+
+        // 生成has边
+        generateHasEdgeSP(classRef, methodRef, dataContainer, newAdded);
+        dataContainer.store(methodRef, false);
+
+        if (genAlias) {
+            generateAliasEdgeSP(methodRef, dataContainer);
+        }
+
         return methodRef;
     }
 
@@ -189,6 +266,48 @@ public class ClassInfoCollector {
 
         Set<MethodReference> refs =
                 dataContainer.getAliasMethodRefs(cls, currentSootMethod.getSubSignature());
+
+        if (refs != null && !refs.isEmpty()) {
+            for (MethodReference ref : refs) {
+                Alias alias = Alias.newInstance(ref, methodRef);
+                ref.getChildAliasEdges().add(alias);
+                dataContainer.store(alias, true);
+            }
+        }
+    }
+
+    public static void generateHasEdgeSP(ClassReference classRef, MethodReference methodRef,
+                                         DataContainer dataContainer, boolean newAdded) {
+        Has has = Has.newInstance(classRef, methodRef);
+        if (classRef.getHasEdge().contains(has)) return;
+
+        classRef.getHasEdge().add(has);
+        dataContainer.store(has, true);
+
+        if (newAdded) {
+            generateAliasEdgeSP(methodRef, dataContainer);
+        }
+    }
+
+    public static void generateAliasEdgeSP(MethodReference methodRef, DataContainer dataContainer) {
+        String methodName = methodRef.getName();
+
+        if ("<init>".equals(methodName) || "<clinit>".equals(methodName)) {
+            return; // 构造器和静态初始化不处理别名
+        }
+
+        // 获取当前方法的SootMethod
+        sootup.core.model.SootMethod currentSootMethod = methodRef.getSootUpMethod();
+        if (currentSootMethod == null) return;
+
+        // 在SootUp中获取类
+        JavaClassType classType = (JavaClassType) SootUpUtils.createClassType(methodRef.getClassname());
+        JavaSootClass cls = SootUpViewManager.getInstance().getClass(classType);
+
+        if (cls == null) return;
+
+        // 获取别名方法引用
+        Set<MethodReference> refs = dataContainer.getAliasMethodRefsSP(cls, currentSootMethod.getSubSignature().getName());
 
         if (refs != null && !refs.isEmpty()) {
             for (MethodReference ref : refs) {

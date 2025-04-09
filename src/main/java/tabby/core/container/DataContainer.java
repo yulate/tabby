@@ -12,6 +12,9 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.SootMethodRef;
 import soot.jimple.InvokeExpr;
+import sootup.core.types.ClassType;
+import sootup.java.core.JavaSootClass;
+import sootup.java.core.types.JavaClassType;
 import tabby.analysis.data.Context;
 import tabby.common.bean.edge.*;
 import tabby.common.bean.ref.ClassReference;
@@ -19,6 +22,8 @@ import tabby.common.bean.ref.MethodReference;
 import tabby.common.utils.SemanticUtils;
 import tabby.config.GlobalConfiguration;
 import tabby.core.collector.ClassInfoCollector;
+import tabby.core.sootup.SootUpUtils;
+import tabby.core.sootup.SootUpViewManager;
 import tabby.dal.service.ClassRefService;
 import tabby.dal.service.MethodRefService;
 import tabby.dal.service.RelationshipsService;
@@ -515,6 +520,48 @@ public class DataContainer {
         relationshipsService.saveExtendToCsv(GlobalConfiguration.EXTEND_RELATIONSHIP_OUTPUT_PATH);
         relationshipsService.saveCallToCsv(GlobalConfiguration.CALL_RELATIONSHIP_OUTPUT_PATH);
         relationshipsService.saveInterfaceToCsv(GlobalConfiguration.INTERFACE_RELATIONSHIP_OUTPUT_PATH);
+    }
+
+    /**
+     * 获取别名方法引用
+     * @param cls
+     * @param subSignature
+     * @return
+     */
+    public Set<MethodReference> getAliasMethodRefsSP(JavaSootClass cls, String subSignature) {
+        Set<MethodReference> refs = new HashSet<>();
+        Set<JavaSootClass> classes = new HashSet<>();
+
+        // 获取父类
+        if (cls.getSuperclass().isPresent()) {
+            String superClassName = cls.getSuperclass().get().getClassName();
+            JavaClassType superClassType = (JavaClassType) SootUpUtils.createClassType(superClassName);
+            JavaSootClass superClass = SootUpViewManager.getInstance().getClass(superClassType);
+            if (superClass != null) {
+                classes.add(superClass);
+            }
+        }
+
+        // 获取接口
+        for (ClassType interfaceType : cls.getInterfaces()) {
+            JavaSootClass interfaceClass = SootUpViewManager.getInstance().getClass(interfaceType);
+            if (interfaceClass != null) {
+                classes.add(interfaceClass);
+            }
+        }
+
+        // 在所有父类和接口中查找方法
+        for (JavaSootClass clazz : classes) {
+            MethodReference ref = getMethodRefBySubSignature(clazz.getName(), subSignature,
+                    GlobalConfiguration.IS_BUILD_WIH_CACHE_ENABLE);
+            if (ref != null) {
+                refs.add(ref);
+            } else {
+                refs.addAll(getAliasMethodRefsSP(clazz, subSignature));
+            }
+        }
+
+        return refs;
     }
 
 }
