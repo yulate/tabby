@@ -213,6 +213,9 @@ public class DataContainer {
     }
 
     private String clean(String data) {
+        if (data == null) {
+            return null;
+        }
         return data.replace("'", "");
     }
 

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import soot.SootMethod;
 import sootup.java.core.JavaSootMethod;
 import tabby.analysis.SimpleTypeAnalysis;
+import tabby.analysis.SimpleTypeAnalysisSP;
 import tabby.analysis.data.Context;
 import tabby.analysis.model.*;
 import tabby.common.bean.ref.MethodReference;
@@ -158,7 +159,8 @@ public class CallGraphCollector {
                 dataContainer.getRunningMethods().put(uuid, context);
                 context.setInterProcedural(GlobalConfiguration.INTER_PROCEDURAL);
 
-                SimpleTypeAnalysis.processMethodSP(method,context);
+//                SimpleTypeAnalysis.processMethodSP(method,context);
+                SimpleTypeAnalysisSP.processMethodSP(method, context);
             }
 
             tickTock.countDown();
